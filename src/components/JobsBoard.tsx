@@ -163,7 +163,7 @@ export default function JobsBoard({
       {!currentUser ? (
         <div className="mb-8 p-5 bg-brand-primary-light border border-brand-secondary/20 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left animate-fadeIn">
           <div className="flex items-start space-x-3.5 max-w-2xl">
-            <div className="w-10 h-10 rounded-xl bg-brand-primary flex items-center justify-center text-brand-secondary shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-brand-primary flex items-center justify-center text-brand-primary-light shrink-0">
               <Sparkles className="w-5 h-5" />
             </div>
             <div className="space-y-1">
@@ -376,7 +376,7 @@ export default function JobsBoard({
                   <div 
                     key={job.id}
                     onClick={() => handleOpenVacancy(job)}
-                    className="bg-white rounded-2xl border border-slate-100 hover:border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-300 p-6 text-left flex flex-col justify-between space-y-5 group relative overflow-hidden cursor-pointer"
+                    className="bg-theme-card-bg rounded-2xl border border-theme-card-border hover:border-brand-primary/30 shadow-xs hover:shadow-md transition-all duration-300 p-6 text-left flex flex-col justify-between space-y-5 group relative overflow-hidden cursor-pointer"
                   >
                     
                     {/* Brand header details with logo circle */}
@@ -397,7 +397,7 @@ export default function JobsBoard({
                         )}
                         <div className="space-y-0.5">
                           <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{job.company}</span>
-                          <h4 className="text-sm font-black text-[#0f1f35] leading-tight group-hover:text-brand-secondary transition-colors">{job.role}</h4>
+                          <h4 className="text-sm font-black text-theme-text group-hover:text-brand-secondary leading-tight transition-colors">{job.role}</h4>
                         </div>
                       </div>
 
@@ -418,10 +418,17 @@ export default function JobsBoard({
                           <span>ველოდებით CV-ს</span>
                         </button>
                       ) : (
-                        <div className="px-2.5 py-1 text-[10px] font-bold rounded-lg h-7 bg-slate-100 text-slate-400 flex items-center justify-center space-x-1 border border-slate-100/50 shrink-0">
-                          <Lock className="w-3.5 h-3.5 text-slate-300" />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenAuth();
+                          }}
+                          className="px-2.5 py-1 text-[10px] font-bold rounded-lg h-7 bg-theme-input-bg hover:bg-brand-primary-light text-theme-text-muted hover:text-brand-primary flex items-center justify-center space-x-1 border border-theme-card-border hover:border-brand-primary/30 shrink-0 cursor-pointer transition-all"
+                        >
+                          <Lock className="w-3.5 h-3.5 transition-colors" />
                           <span>შესვლა AI-სთვის</span>
-                        </div>
+                        </button>
                       )}
                     </div>
 

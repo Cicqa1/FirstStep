@@ -348,7 +348,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen bg-theme-bg text-theme-text flex flex-col justify-between selection:bg-brand-secondary/15 selection:text-brand-primary transition-colors duration-300 ${mode === "dark" ? "mode-dark" : "mode-light"}`}>
+    <div className={`min-h-screen bg-theme-bg text-theme-text flex flex-col justify-between selection:bg-brand-secondary/15 selection:text-brand-primary transition-colors duration-300 ${mode === "dark" ? "mode-dark dark" : "mode-light"}`}>
       
       {/* Dynamic Top Navigation Bar */}
       <Navbar 

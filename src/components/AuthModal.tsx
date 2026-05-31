@@ -246,7 +246,63 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
     }, 1500);
   };
 
-  const isEduEmail = email.toLowerCase().endsWith(".edu.ge");
+  const getUniversityName = (emailStr: string): string | null => {
+    const emailLower = emailStr.toLowerCase().trim();
+    if (!emailLower || !emailLower.includes("@")) return null;
+    
+    const parts = emailLower.split("@");
+    if (parts.length < 2) return null;
+    const domain = parts[1];
+    if (!domain) return null;
+
+    if (domain === "btu.edu.ge" || domain === "btu.ge") {
+      return "BTU (ბიზნესისა და ტექნოლოგიების უნივერსიტეტი)";
+    }
+    if (domain === "tsu.edu.ge") {
+      return "თსუ (თბილისის სახელმწიფო უნივერსიტეტი)";
+    }
+    if (domain === "iliauni.edu.ge") {
+      return "ილიაუნი (ილიას სახელმწიფო უნივერსიტეტი)";
+    }
+    if (domain === "gtu.edu.ge" || domain === "gtu.ge") {
+      return "სტუ (საქართველოს ტექნიკური უნივერსიტეტი)";
+    }
+    if (domain === "cu.edu.ge" || domain === "cu.ge") {
+      return "კავკასიის უნივერსიტეტი (CU)";
+    }
+    if (domain === "freeuni.edu.ge") {
+      return "თავისუფალი უნივერსიტეტი";
+    }
+    if (domain === "agruni.edu.ge") {
+      return "აგრარული უნივერსიტეტი";
+    }
+    if (domain === "kiu.edu.ge") {
+      return "ქუთაისის საერთაშორისო უნივერსიტეტი (KIU)";
+    }
+    if (domain === "seu.edu.ge") {
+      return "სეუ (საქართველოს ეროვნული უნივერსიტეტი)";
+    }
+    if (domain === "ibsu.edu.ge") {
+      return "შავი ზღვის საერთაშორისო უნივერსიტეტი (IBSU)";
+    }
+    if (domain === "sdsu.edu.ge") {
+      return "SDSU საქართველო";
+    }
+    
+    if (domain.endsWith(".edu.ge")) {
+      return "სტუდენტური საუნივერსიტეტო ფოსტა (.edu.ge)";
+    }
+    
+    return null;
+  };
+
+  const detectedUniName = getUniversityName(email);
+  const isEduEmail = email.toLowerCase().includes("@") && (
+    email.toLowerCase().endsWith(".edu.ge") || 
+    email.toLowerCase().endsWith("btu.ge") ||
+    email.toLowerCase().endsWith("gtu.ge") ||
+    email.toLowerCase().endsWith("cu.ge")
+  );
 
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn" id="auth-modal-overlay">
@@ -341,7 +397,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
             <div className="flex justify-between items-center">
               <label className="text-[10px] font-extrabold text-brand-primary uppercase tracking-wider">ელ. ფოსტა</label>
               {activeTab === "register" && (
-                <span className="text-[9px] font-bold text-brand-secondary">სტუდენტებისთვის რეკომენდებულია .ge</span>
+                <span className="text-[9px] font-bold text-brand-secondary">სტუდენტებისთვის რეკომენდებულია საუნივერსიტეტო ფოსტა (.edu.ge)</span>
               )}
             </div>
             <div className="relative">
@@ -355,10 +411,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                 id="auth-email-input"
               />
             </div>
-            {isEduEmail && (
+            {detectedUniName && (
               <div className="flex items-center space-x-1.5 pt-1">
-                <Sparkles className="w-3.5 h-3.5 text-brand-secondary" />
-                <span className="text-[9px] font-bold text-slate-400">სტუდენტური უნივერსიტეტის ელ-ფოსტა იდენტიფიცირებულია!</span>
+                <Sparkles className="w-3.5 h-3.5 text-brand-secondary animate-pulse" />
+                <span className="text-[9px] font-extrabold text-brand-secondary">იდენტიფიცირებულია: {detectedUniName} 🎓</span>
               </div>
             )}
           </div>

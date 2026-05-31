@@ -176,16 +176,16 @@ export default function VacancyModal({
                   </h4>
                   {currentUser ? (
                     availableCvs.length > 0 ? (
-                      <p className="text-xs sm:text-sm text-slate-900 dark:text-[#E2E8F0] leading-relaxed font-semibold">
+                      <p className="text-xs sm:text-sm text-theme-text/95 leading-relaxed font-semibold">
                         თქვენი რეკომენდებული CV <strong className="text-brand-primary font-black">„{selectedCvObj?.title}“</strong> ამ ვაკანსიასთან ემთხვევა <strong className="text-emerald-800 dark:text-emerald-400 font-extrabold">{currentMatchPercent}%</strong>-ით.
                       </p>
                     ) : (
-                      <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-300 leading-relaxed font-bold">
+                      <p className="text-xs sm:text-sm text-theme-text-muted leading-relaxed font-bold">
                         თქვენ არ გაქვთ აქტიური CV. <button onClick={onOpenBuilder} className="text-brand-primary underline cursor-pointer font-black hover:text-brand-secondary transition-all">შექმენით ახალი CV ბილდერში</button>, რათა მიიღოთ ზუსტი AI თავსებადობის კოეფიციენტი.
                       </p>
                     )
                   ) : (
-                    <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-300 leading-relaxed font-medium">
+                    <p className="text-xs sm:text-sm text-theme-text-muted leading-relaxed font-medium">
                       თავსებადობის ზუსტი კოეფიციენტი ხელმისაწვდომია ავტორიზებული მომხმარებლებისთვის.
                     </p>
                   )}
