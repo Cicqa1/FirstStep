@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Menu, X, ArrowRight, LogOut, User as UserIcon, Sparkles, GraduationCap, Palette, ChevronDown, Sun, Moon } from "lucide-react";
 import { User } from "../types";
+import mascotLogo from "../assets/images/firststep_new_mascot_logo_1780132225263.png";
 
 interface NavbarProps {
   activeView: string;
@@ -57,7 +58,7 @@ export default function Navbar({
             id="nav-logo"
           >
             <img
-              src="/src/assets/images/firststep_new_mascot_logo_1780132225263.png"
+              src={mascotLogo}
               alt="FirstStep Logo"
               className="h-11 w-11 object-contain rounded-xl shadow-xs group-hover:scale-105 transition-all duration-300 bg-transparent"
               referrerPolicy="no-referrer"

@@ -12,6 +12,7 @@ import AuthModal from "./components/AuthModal";
 import ProfilePage from "./components/ProfilePage";
 import { PolishedCV, User, JobApplication } from "./types";
 import { Sparkles, GraduationCap } from "lucide-react";
+import mascotLogo from "./assets/images/firststep_new_mascot_logo_1780132225263.png";
 
 export default function App() {
   const [view, setView] = useState<string>("home");
@@ -378,7 +379,7 @@ export default function App() {
             >
               <div className="w-9 h-9 rounded-xl bg-transparent flex items-center justify-center p-0.5 shadow-xs group-hover:scale-105 transition-transform duration-300">
                 <img
-                  src="/src/assets/images/firststep_new_mascot_logo_1780132225263.png"
+                  src={mascotLogo}
                   alt="FirstStep Logo"
                   className="w-full h-full object-contain rounded-lg bg-transparent"
                   referrerPolicy="no-referrer"

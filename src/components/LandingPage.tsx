@@ -1,4 +1,5 @@
 import { ArrowRight, BookOpen, Star, Sparkles, AlertCircle, FileText, CheckCircle2, ChevronRight, Compass, GraduationCap } from "lucide-react";
+import mascotLogo from "../assets/images/firststep_new_mascot_logo_1780132225263.png";
 
 interface LandingPageProps {
   onNavigate: (view: string) => void;
@@ -130,7 +131,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
                     <div className="border-t border-slate-100 pt-3 flex justify-between items-center">
                       <div className="flex items-center space-x-1.5">
                         <img
-                          src="/src/assets/images/firststep_new_mascot_logo_1780132225263.png"
+                          src={mascotLogo}
                           alt="FirstStep logo"
                           className="h-6 w-6 object-contain rounded-md"
                           referrerPolicy="no-referrer"

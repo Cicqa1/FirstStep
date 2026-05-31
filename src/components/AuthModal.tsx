@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X, Lock, Mail, User, CheckCircle, Eye, EyeOff, Sparkles, GraduationCap } from "lucide-react";
 import { User as UserType } from "../types";
+import mascotLogo from "../assets/images/firststep_new_mascot_logo_1780132225263.png";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -268,7 +269,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
         <div className="px-6 pt-6 pb-2 flex justify-between items-center bg-white border-b border-slate-100">
           <div className="flex items-center space-x-2">
             <img
-              src="/src/assets/images/firststep_new_mascot_logo_1780132225263.png"
+              src={mascotLogo}
               alt="FirstStep Logo"
               className="h-8 w-8 object-contain rounded-lg"
               referrerPolicy="no-referrer"
