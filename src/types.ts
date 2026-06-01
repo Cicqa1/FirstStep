@@ -51,6 +51,8 @@ export interface User {
   email: string;
   fullName: string;
   createdAt: string;
+  picture?: string;
+  password?: string; // stored locally
   preferences?: {
     interestedSectors: string[];
     preferredType: string;
@@ -59,6 +61,7 @@ export interface User {
 
 export interface JobApplication {
   id: string;
+  userId: string;
   jobId: string;
   cvId: string;
   appliedAt: string;

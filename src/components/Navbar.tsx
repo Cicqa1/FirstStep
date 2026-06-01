@@ -69,21 +69,27 @@ export default function Navbar({
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            {navLinks.map((link) => (
-              <button
-                key={link.id}
-                onClick={() => onNavigate(link.id)}
-                className={`text-sm font-semibold tracking-wide transition-colors duration-200 cursor-pointer ${
-                  activeView === link.id
-                    ? "text-brand-primary"
-                    : "text-theme-text/85 hover:text-brand-primary-hover"
-                }`}
-                id={`nav-${link.id}`}
-              >
-                {link.label}
-              </button>
-            ))}
+          <div className="hidden md:flex items-center space-x-3 bg-theme-input-bg/40 p-1.5 rounded-2xl border border-theme-card-border/40">
+            {navLinks.map((link) => {
+              const isActive = activeView === link.id;
+              return (
+                <button
+                  key={link.id}
+                  onClick={() => onNavigate(link.id)}
+                  className={`text-sm font-bold tracking-wide transition-all duration-200 cursor-pointer px-4 py-1.5 rounded-xl flex items-center gap-1.5 ${
+                    isActive
+                      ? "bg-brand-primary text-white shadow-sm ring-1 ring-brand-primary/20"
+                      : "text-theme-text/80 hover:bg-theme-input-bg/70 hover:text-brand-primary"
+                  }`}
+                  id={`nav-${link.id}`}
+                >
+                  <span>{link.label}</span>
+                  {isActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-pulse" />
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Desktop Auth State / CTA Button combo / Theme selector */}
@@ -158,9 +164,18 @@ export default function Navbar({
                   title="ჩემი პროფილი"
                   id="navbar-profile-trigger"
                 >
-                  <div className="w-6.5 h-6.5 rounded-md bg-brand-primary text-white flex items-center justify-center text-[10px] font-black tracking-tight uppercase">
-                    {getInitials(currentUser.fullName)}
-                  </div>
+                  {currentUser.picture ? (
+                    <img
+                      src={currentUser.picture}
+                      alt={currentUser.fullName}
+                      className="w-6.5 h-6.5 rounded-md object-cover border border-brand-primary/10"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-6.5 h-6.5 rounded-md bg-brand-primary text-white flex items-center justify-center text-[10px] font-black tracking-tight uppercase">
+                      {getInitials(currentUser.fullName)}
+                    </div>
+                  )}
                   <span className="text-xs font-bold text-brand-primary max-w-[120px] truncate">
                     {currentUser.fullName}
                   </span>
@@ -202,10 +217,19 @@ export default function Navbar({
             {currentUser && (
               <button
                 onClick={() => { onNavigate("profile"); setIsOpen(false); }}
-                className="w-7 h-7 rounded-lg bg-brand-primary-light border border-brand-secondary/20 flex items-center justify-center text-[9px] font-extrabold text-brand-primary mr-3 cursor-pointer hover:opacity-90 transition-all"
+                className="w-7 h-7 rounded-lg overflow-hidden border border-brand-secondary/20 flex items-center justify-center text-[9px] font-extrabold text-brand-primary mr-3 cursor-pointer hover:opacity-90 transition-all"
                 title="ჩემი პროფილი"
               >
-                {getInitials(currentUser.fullName)}
+                {currentUser.picture ? (
+                  <img
+                    src={currentUser.picture}
+                    alt={currentUser.fullName}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span>{getInitials(currentUser.fullName)}</span>
+                )}
               </button>
             )}
             <button
@@ -223,22 +247,28 @@ export default function Navbar({
       {/* Mobile Menu */}
       {isOpen && (
         <div className="md:hidden bg-theme-nav-bg/95 border-b border-theme-card-border/50 backdrop-blur-md absolute top-18 left-0 right-0 py-4 px-4 shadow-xl space-y-3 z-50 animate-fadeIn text-theme-text">
-          {navLinks.map((link) => (
-            <button
-              key={link.id}
-              onClick={() => {
-                onNavigate(link.id);
-                setIsOpen(false);
-              }}
-              className={`block w-full text-left px-4 py-3 text-sm font-semibold rounded-xl transition-colors duration-200 cursor-pointer ${
-                activeView === link.id
-                  ? "bg-brand-primary-light text-brand-primary"
-                  : "text-theme-text/85 hover:bg-theme-card-bg/80 hover:text-brand-primary"
-              }`}
-            >
-              {link.label}
-            </button>
-          ))}
+          {navLinks.map((link) => {
+            const isActive = activeView === link.id;
+            return (
+              <button
+                key={link.id}
+                onClick={() => {
+                  onNavigate(link.id);
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-4 py-3 text-sm font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-between ${
+                  isActive
+                    ? "bg-brand-primary text-white shadow-sm"
+                    : "text-theme-text/85 hover:bg-theme-card-bg/80 hover:text-brand-primary"
+                }`}
+              >
+                <span>{link.label}</span>
+                {isActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                )}
+              </button>
+            );
+          })}
           
           {/* Mobile Design Customizer */}
           <div className="p-3 bg-theme-card-bg border border-theme-card-border/40 rounded-xl space-y-2">

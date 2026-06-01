@@ -302,12 +302,550 @@ Output a JSON array with exactly 10 matching vacancies in this order.
     }
   });
 
+
+  // --- API ROUTE: Google OAuth Callback (for real Google OAuth) ---
+  app.get("/auth/google-callback", (req, res) => {
+    res.send(`
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <title>Google Authentication</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f0f4f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      color: #1f1f1f;
+    }
+    .loading-container {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 30px 40px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      text-align: center;
+      max-width: 360px;
+      border: 1px solid #e0e3e7;
+    }
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #0b57d0;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    h2 {
+      font-size: 18px;
+      font-weight: 500;
+      margin: 0 0 8px;
+    }
+    p {
+      font-size: 13px;
+      color: #5f6368;
+      margin: 0;
+    }
+    .error {
+      color: #b3261e;
+    }
+  </style>
+</head>
+<body>
+  <div class="loading-container" id="status-box">
+    <div class="spinner" id="loader"></div>
+    <h2 id="status-title">ავტორიზაცია მიმდინარეობს...</h2>
+    <p id="status-desc">გთხოვთ დაელოდოთ, მიმდინარეობს პროფილის მონაცემების მიღება.</p>
+  </div>
+
+  <script>
+    function sendError(message) {
+      document.getElementById("loader").style.display = "none";
+      document.getElementById("status-title").innerText = "შეცდომა";
+      document.getElementById("status-title").className = "error";
+      document.getElementById("status-desc").innerText = message;
+    }
+
+    if (window.location.hash) {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const accessToken = params.get("access_token");
+      
+      if (accessToken) {
+        fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: {
+            "Authorization": "Bearer " + accessToken
+          }
+        })
+          .then(res => {
+            if (!res.ok) {
+              throw new Error("სერვერმა უარყო მოთხოვნა");
+            }
+            return res.json();
+          })
+          .then(profile => {
+            if (window.opener) {
+              window.opener.postMessage({
+                type: "GOOGLE_SIGN_IN_SUCCESS",
+                profile: {
+                  id: profile.sub,
+                  email: profile.email,
+                  fullName: profile.name,
+                  picture: profile.picture,
+                  createdAt: new Date().toISOString()
+                }
+              }, "*");
+              window.close();
+            } else {
+              sendError("მშობელი ფანჯარა ვერ მოიძებნა. გთხოვთ, დაბრუნდეთ მთავარ გვერდზე და თავიდან სცადოთ.");
+            }
+          })
+          .catch(err => {
+            console.error("Error fetching Google profile info:", err);
+            sendError("პროფილის ინფორმაციის წამოღება ვერ მოხერხდა. სცადეთ ხელახლა.");
+          });
+      } else {
+        const errorMsg = params.get("error");
+        sendError(errorMsg ? "Google OAuth Error: " + errorMsg : "Access Token ვერ მოიძებნა ლინკში.");
+      }
+    } else {
+      sendError("ამ გვერდის პირდაპირ გახსნა დაუშვებელია. იგი გამოიყენება ავტორიზაციის დროს.");
+    }
+  </script>
+</body>
+</html>
+    `);
+  });
+
+  // --- API ROUTE: Google Authentication Popup ---
+  app.get("/auth/google-popup", (req, res) => {
+    res.send(`
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in - Google Accounts</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap');
+    
+    body {
+      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #f0f4f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 16px;
+      box-sizing: border-box;
+      color: #1f1f1f;
+    }
+    
+    .card {
+      background: #ffffff;
+      border-radius: 28px;
+      padding: 40px;
+      width: 100%;
+      max-width: 448px;
+      box-sizing: border-box;
+      border: 1px solid #e0e3e7;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    /* Google v3 Progress Bar Pulse */
+    .progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background-color: #e0e3e7;
+      display: none;
+      overflow: hidden;
+    }
+    .progress-bar-value {
+      width: 100%;
+      height: 100%;
+      background-color: #0b57d0;
+      animation: google-indeterminate 1.5s infinite linear;
+      transform-origin: 0% 50%;
+    }
+    @keyframes google-indeterminate {
+      0% { transform:  translateX(-100%) scaleX(0.2); }
+      50% { transform:  translateX(-10%) scaleX(0.6); }
+      100% { transform:  translateX(100%) scaleX(0.2); }
+    }
+
+    .logo-container {
+      display: flex;
+      justify-content: flex-start;
+      margin-bottom: 16px;
+    }
+    
+    h1 {
+      font-size: 24px;
+      font-weight: 400;
+      color: #1f1f1f;
+      margin: 0 0 8px 0;
+      text-align: left;
+      letter-spacing: -0.5px;
+    }
+    
+    p.subtitle {
+      font-size: 16px;
+      color: #1f1f1f;
+      margin: 0 0 28px 0;
+      text-align: left;
+      line-height: 1.4;
+    }
+    
+    .subtitle-app {
+      color: #0b57d0;
+      font-weight: 500;
+    }
+
+    /* Google Modern Material Input Outlines */
+    .google-input-container {
+      position: relative;
+      width: 100%;
+      margin-top: 12px;
+      margin-bottom: 24px;
+    }
+    .google-input-container input {
+      width: 100%;
+      padding: 16px;
+      font-size: 16px;
+      border: 1px solid #747775;
+      border-radius: 4px;
+      outline: none;
+      background: transparent;
+      transition: border-color 0.15s ease;
+      box-sizing: border-box;
+      color: #1f1f1f;
+    }
+    .google-input-container label {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #ffffff;
+      padding: 0 6px;
+      color: #444746;
+      font-size: 16px;
+      pointer-events: none;
+      transition: 0.15s ease all;
+    }
+    .google-input-container input:focus {
+      border: 2px solid #0b57d0;
+      padding: 15px;
+    }
+    .google-input-container input:focus ~ label,
+    .google-input-container input:not(:placeholder-shown) ~ label {
+      top: 0;
+      font-size: 12px;
+      color: #0b57d0;
+    }
+    .google-input-container input:not(:focus):not(:placeholder-shown) ~ label {
+      color: #444746;
+    }
+
+    /* Quick Access Student Accounts list */
+    .quick-section {
+      margin-top: 24px;
+      border-top: 1px solid #dadce0;
+      padding-top: 20px;
+    }
+    .quick-title {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #444746;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+    .accounts-list {
+      margin-bottom: 8px;
+    }
+    .account-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      border: 1px solid #e0e3e7;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      text-align: left;
+      background-color: #fafbfc;
+      transition: background-color 0.15s, border-color 0.15s;
+    }
+    .account-item:hover {
+      background-color: #f0f4f9;
+      border-color: #c4c7c5;
+    }
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: #1a73e8;
+      color: white;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 12px;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .avatar-tsu { background-color: #2c3e50; }
+    .avatar-iliauni { background-color: #8e44ad; }
+    .avatar-kiu { background-color: #d35400; }
+    
+    .account-details {
+      flex-grow: 1;
+      min-width: 0;
+    }
+    .account-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: #1f1f1f;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .account-email {
+      font-size: 11px;
+      color: #444746;
+      margin: 0;
+      font-family: monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .badge {
+      font-size: 9px;
+      background-color: #e8f0fe;
+      color: #0b57d0;
+      padding: 2px 6px;
+      border-radius: 12px;
+      font-weight: bold;
+      margin-left: 8px;
+      white-space: nowrap;
+    }
+
+    .google-buttons {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 32px;
+    }
+    .create-account-btn {
+      background: none;
+      border: none;
+      color: #0b57d0;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 100px;
+      transition: background-color 0.15s;
+      font-family: inherit;
+    }
+    .create-account-btn:hover {
+      background-color: #f0f4f9;
+    }
+    .next-btn {
+      background-color: #0b57d0;
+      color: #ffffff;
+      border: none;
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: background-color 0.15s, box-shadow 0.15s;
+      font-family: inherit;
+    }
+    .next-btn:hover {
+      background-color: #0842a0;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    #form-error {
+      color: #b3261e;
+      font-size: 12px;
+      margin-top: -12px;
+      margin-bottom: 16px;
+      text-align: left;
+      font-weight: 500;
+    }
+
+    .footer {
+      font-size: 12px;
+      color: #444746;
+      text-align: left;
+      margin-top: 32px;
+      line-height: 1.5;
+    }
+    .footer a {
+      color: #0b57d0;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="progress-bar" id="google-loader">
+      <div class="progress-bar-value"></div>
+    </div>
+
+    <div class="logo-container">
+      <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+      </svg>
+    </div>
+
+    <h1>შესვლა</h1>
+    <p class="subtitle">აპლიკაციაზე <span class="subtitle-app">FirstStep</span> გადასასვლელად</p>
+
+    <!-- Google Material Form -->
+    <div id="identifier-section">
+      <div class="google-input-container">
+        <input type="text" id="custom-email" required placeholder=" " autofocus onkeydown="handleEnter(event)">
+        <label for="custom-email">ელფოსტა ან ტელეფონი</label>
+      </div>
+      
+      <div id="form-error" style="display: none;"></div>
+
+      <div class="google-buttons">
+        <button class="create-account-btn" onclick="useDemoAccount()">ანგარიშის შექმნა</button>
+        <button class="next-btn" onclick="submitEmail()">შემდეგი</button>
+      </div>
+    </div>
+
+    <!-- Georgia Student Universities pre-saved accounts -->
+    <div class="quick-section">
+      <div class="quick-title">სოციალური სტუდენტური შესვლა</div>
+      <div class="accounts-list">
+        <!-- Account 1: Mariam -->
+        <div class="account-item" onclick="selectAccount('mariam.tsitskishvili.1@btu.edu.ge', 'მარიამ ციცქიშვილი', '')">
+          <div class="avatar" style="background-color: #2c3e50;">მც</div>
+          <div class="account-details">
+            <div class="account-name">მარიამ ციცქიშვილი</div>
+            <div class="account-email">mariam.tsitskishvili.1@btu.edu.ge</div>
+          </div>
+          <span class="badge">BTU 🏆</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      გასაგრძელებლად Google გაუზიარებს თქვენს სახელს, ელფოსტის მისამართს და პროფილის სურათს <strong>FirstStep</strong>-ს. შესვლამდე გაეცანით <a href="#" onclick="return false;">გამოყენების წესებს</a>.
+    </div>
+  </div>
+
+  <script>
+    function showLoader() {
+      document.getElementById('google-loader').style.display = 'block';
+    }
+
+    function selectAccount(email, name, picture) {
+      showLoader();
+      
+      const mockGoogleId = 'gi_' + Math.floor(100000000 + Math.random() * 900000000);
+      const responseData = {
+        type: 'GOOGLE_SIGN_IN_SUCCESS',
+        profile: {
+          id: mockGoogleId,
+          email: email.trim().toLowerCase(),
+          fullName: name.trim(),
+          picture: picture || '',
+          createdAt: new Date().toISOString()
+        }
+      };
+
+      setTimeout(() => {
+        if (window.opener) {
+          window.opener.postMessage(responseData, '*');
+          window.close();
+        } else {
+          alert('შეცდომა: მშობელი ფანჯარა ვერ მოიძებნა. დახურეთ ფანჯარა და სცადეთ ხელახლა.');
+          document.getElementById('google-loader').style.display = 'none';
+        }
+      }, 800);
+    }
+
+    function useDemoAccount() {
+      document.getElementById('custom-email').value = "mariam.tsitskishvili.1@btu.edu.ge";
+      document.getElementById('custom-email').focus();
+    }
+
+    function handleEnter(e) {
+      if (e.key === 'Enter') {
+        submitEmail();
+      }
+    }
+
+    function submitEmail() {
+      const emailInput = document.getElementById('custom-email');
+      const email = emailInput.value.trim();
+      const errorDiv = document.getElementById('form-error');
+
+      errorDiv.style.display = 'none';
+
+      if (!email) {
+        errorDiv.innerText = 'შეიყვანეთ ელფოსტა ან ტელეფონის ნომერი';
+        errorDiv.style.display = 'block';
+        emailInput.focus();
+        return;
+      }
+
+      // Format name gracefully from email
+      let name = "სტუდენტი";
+      if (email.includes('@')) {
+        const localPart = email.split('@')[0];
+        if (localPart.includes('.')) {
+          name = localPart.split('.')
+            .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+            .join(' ');
+        } else {
+          name = localPart.charAt(0).toUpperCase() + localPart.slice(1);
+        }
+      }
+
+      selectAccount(email, name, '');
+    }
+  </script>
+</body>
+</html>
+    `);
+  });
+
   // --- Serve Vite in Dev, fallback to static dist folder in Prod ---
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
+
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");

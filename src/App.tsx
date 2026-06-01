@@ -13,6 +13,8 @@ import ProfilePage from "./components/ProfilePage";
 import { PolishedCV, User, JobApplication } from "./types";
 import { Sparkles, GraduationCap } from "lucide-react";
 import mascotLogo from "./assets/images/firststep_new_mascot_logo_1780132225263.png";
+import { auth } from "./lib/firebase";
+import { getUserCVs, saveUserCV, deleteUserCV, getUserApplications, saveUserApplication } from "./lib/db";
 
 export default function App() {
   const [view, setView] = useState<string>("home");
@@ -160,9 +162,14 @@ export default function App() {
   // Fallback single-cv state for legacy users
   const [polishedCV, setPolishedCV] = useState<PolishedCV | null>(null);
 
-  const getUserKey = (userObj: User | null) => {
+   const getUserKey = (userObj: User | null) => {
     return userObj ? `firststep_cvs_${userObj.id}` : "firststep_cvs_anonymous";
   };
+
+  const getAppliedJobsKey = (userObj: User | null) => {
+    return userObj ? `firststep_applied_jobs_${userObj.id}` : "firststep_applied_jobs_anonymous";
+  };
+
 
   // Synchronize dynamic user states and load isolated CV list
   useEffect(() => {
@@ -175,13 +182,20 @@ export default function App() {
         setCurrentUser(activeUserObj);
       }
 
-      // 2. Applications history
-      const savedApps = localStorage.getItem("firststep_applied_jobs");
+      // 2. Load applications and CVs locally as temporary/immediate startup placeholder
+      const appsKey = getAppliedJobsKey(activeUserObj);
+      const savedApps = localStorage.getItem(appsKey);
       if (savedApps) {
         setAppliedJobIds(JSON.parse(savedApps));
+      } else if (!activeUserObj) {
+        const globalApps = localStorage.getItem("firststep_applied_jobs");
+        if (globalApps) {
+          setAppliedJobIds(JSON.parse(globalApps));
+        } else {
+          setAppliedJobIds([]);
+        }
       }
 
-      // 3. Load CVs specific to active user
       const userKey = getUserKey(activeUserObj);
       const savedCvList = localStorage.getItem(userKey);
       if (savedCvList) {
@@ -189,28 +203,99 @@ export default function App() {
         setCvList(parsedList);
         if (parsedList.length > 0) {
           setPolishedCV(parsedList[0]);
-        } else {
-          setPolishedCV(null);
-        }
-      } else {
-        // Migration support for legacy users
-        const savedLegacyCv = localStorage.getItem("firststep_polished_cv");
-        if (savedLegacyCv && !activeUserObj) {
-          const legacyObj = JSON.parse(savedLegacyCv);
-          setCvList([legacyObj]);
-          setPolishedCV(legacyObj);
-          localStorage.setItem(userKey, JSON.stringify([legacyObj]));
-        } else {
-          setCvList([]);
-          setPolishedCV(null);
         }
       }
     } catch (e) {
-      console.error("Failed to load state assets from storage:", e);
+      console.error("Failed to load initial active user state:", e);
     }
+  }, []);
+
+  // Synchronize dynamic user lists with Firebase Firestore on authenticated session
+  useEffect(() => {
+    if (!currentUser) return;
+
+    let isSubscribed = true;
+    async function loadUserFirebaseData() {
+      try {
+        // Fetch CVs directly from user's secure subcollection
+        const cvs = await getUserCVs(currentUser.id);
+        if (!isSubscribed) return;
+
+        // If Firestore returns nothing, but we have a non-empty cache in localStorage for this user, write local CVs back to Firestore!
+        const localCvsKey = getUserKey(currentUser);
+        const savedCvsData = localStorage.getItem(localCvsKey);
+        let finalCvs = [...cvs];
+
+        if (savedCvsData) {
+          try {
+            const localCvs: PolishedCV[] = JSON.parse(savedCvsData);
+            if (cvs.length === 0 && localCvs.length > 0) {
+              for (const item of localCvs) {
+                await saveUserCV(currentUser.id, item);
+              }
+              finalCvs = localCvs;
+            }
+          } catch (parseErr) {
+            console.error("Failed to parse or migrate local CVs inside App:", parseErr);
+          }
+        }
+
+        setCvList(finalCvs);
+        if (finalCvs.length > 0) {
+          setPolishedCV(finalCvs[0]);
+          localStorage.setItem("firststep_polished_cv", JSON.stringify(finalCvs[0]));
+        } else {
+          setPolishedCV(null);
+          localStorage.removeItem("firststep_polished_cv");
+        }
+        localStorage.setItem(getUserKey(currentUser), JSON.stringify(finalCvs));
+
+        // Fetch applications history directly from user's secure subcollection
+        const apps = await getUserApplications(currentUser.id);
+        if (!isSubscribed) return;
+
+        // Similarly for applications, if Firestore returns nothing, but local storage has applied jobs, sync them!
+        const localJobsKey = getAppliedJobsKey(currentUser);
+        const savedJobsData = localStorage.getItem(localJobsKey);
+        let finalJobIds = apps.map((a) => a.jobId);
+
+        if (savedJobsData) {
+          try {
+            const localJobIds: string[] = JSON.parse(savedJobsData);
+            if (apps.length === 0 && localJobIds.length > 0) {
+              for (const jId of localJobIds) {
+                await saveUserApplication(currentUser.id, {
+                  id: `app_${Math.random().toString(36).substring(2, 11)}`,
+                  userId: currentUser.id,
+                  jobId: jId,
+                  cvId: finalCvs.length > 0 ? finalCvs[0].id : "cv_default",
+                  appliedAt: new Date().toISOString(),
+                  status: "submitted"
+                });
+              }
+              finalJobIds = localJobIds;
+            }
+          } catch (parseErr) {
+            console.error("Failed to parse or migrate local jobs inside App:", parseErr);
+          }
+        }
+
+        setAppliedJobIds(finalJobIds);
+        localStorage.setItem(getAppliedJobsKey(currentUser), JSON.stringify(finalJobIds));
+      } catch (err) {
+        console.error("Failed to sync authenticated details from Firestore:", err);
+      }
+    }
+
+    loadUserFirebaseData();
+
+    return () => {
+      isSubscribed = false;
+    };
   }, [currentUser]);
 
-  const handleSaveCVList = (newList: PolishedCV[]) => {
+  const handleSaveCVList = async (newList: PolishedCV[]) => {
+    const oldList = [...cvList];
     setCvList(newList);
     try {
       localStorage.setItem(getUserKey(currentUser), JSON.stringify(newList));
@@ -228,46 +313,76 @@ export default function App() {
     } catch (e) {
       console.error("Storage save failed:", e);
     }
+
+    // Direct, resilient Firestore entity mirroring
+    if (currentUser) {
+      try {
+        // Write added or updated records
+        for (const item of newList) {
+          const original = oldList.find((o) => o.id === item.id);
+          if (!original || JSON.stringify(original) !== JSON.stringify(item)) {
+            await saveUserCV(currentUser.id, item);
+          }
+        }
+        // Purge deleted records
+        for (const orig of oldList) {
+          const exists = newList.some((n) => n.id === orig.id);
+          if (!exists) {
+            await deleteUserCV(currentUser.id, orig.id);
+          }
+        }
+      } catch (err) {
+        console.error("Firestore CV synchronization failed:", err);
+      }
+    }
   };
 
-  const handleApplyJob = (jobId: string, cvId: string) => {
+  const handleApplyJob = async (jobId: string, cvId: string) => {
     const updated = [...appliedJobIds, jobId];
     setAppliedJobIds(updated);
     try {
-      localStorage.setItem("firststep_applied_jobs", JSON.stringify(updated));
+      const appsKey = getAppliedJobsKey(currentUser);
+      localStorage.setItem(appsKey, JSON.stringify(updated));
     } catch (e) {
       console.error("Failed to store applied job ID:", e);
+    }
+
+    // Direct Firestore application insertion
+    if (currentUser) {
+      try {
+        const newAppId = `app_${Math.random().toString(36).substring(2, 11)}`;
+        const applicationRecord: JobApplication = {
+          id: newAppId,
+          userId: currentUser.id,
+          jobId,
+          cvId: cvId || polishedCV?.id || "default_cv",
+          appliedAt: new Date().toISOString(),
+          status: "submitted"
+        };
+        await saveUserApplication(currentUser.id, applicationRecord);
+      } catch (err) {
+        console.error("Firestore job application insertion failed:", err);
+      }
     }
   };
 
   const handleAuthSuccess = (user: User) => {
     setCurrentUser(user);
     setIsAuthModalOpen(false);
-
-    // If logging in, load their user-specific lists
-    try {
-      const userKey = `firststep_cvs_${user.id}`;
-      const savedCvList = localStorage.getItem(userKey);
-      if (savedCvList) {
-        const parsed = JSON.parse(savedCvList);
-        setCvList(parsed);
-        if (parsed.length > 0) {
-          setPolishedCV(parsed[0]);
-        }
-      } else {
-        setCvList([]);
-        setPolishedCV(null);
-      }
-    } catch (e) {
-      console.error("Failed to synchronize user lists on login:", e);
-    }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+    } catch (err) {
+      console.error("Error signing out from Firebase Auth:", err);
+    }
     setCurrentUser(null);
     localStorage.removeItem("firststep_active_user");
+    localStorage.removeItem("firststep_polished_cv");
     setCvList([]);
     setPolishedCV(null);
+    setAppliedJobIds([]);
     setView("home");
   };
 
