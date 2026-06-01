@@ -14,6 +14,7 @@ import { PolishedCV, User, JobApplication } from "./types";
 import { Sparkles, GraduationCap } from "lucide-react";
 import mascotLogo from "./assets/images/firststep_new_mascot_logo_1780132225263.png";
 import { auth } from "./lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { getUserCVs, saveUserCV, deleteUserCV, getUserApplications, saveUserApplication } from "./lib/db";
 
 export default function App() {
@@ -208,6 +209,87 @@ export default function App() {
     } catch (e) {
       console.error("Failed to load initial active user state:", e);
     }
+  }, []);
+
+  // Synchronize active Firebase authenticated user with local user profile and handle any ID mismatches gracefully
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        let usersList: User[] = [];
+        try {
+          const saved = localStorage.getItem("firststep_users");
+          usersList = saved ? JSON.parse(saved) : [];
+        } catch {
+          usersList = [];
+        }
+
+        const fbEmail = fbUser.email?.toLowerCase();
+        let existingUser = usersList.find((u) => u.email.toLowerCase() === fbEmail);
+
+        if (existingUser) {
+          // If there is an ID mismatch between localStorage and authenticated Firebase UID, migrate data symmetrically!
+          if (existingUser.id !== fbUser.uid) {
+            console.log(`STAuth: ID Mismatch detected. Migrating storage user from ${existingUser.id} to ${fbUser.uid} to align with Firebase Auth...`);
+            const oldCvKey = `firststep_cvs_${existingUser.id}`;
+            const newCvKey = `firststep_cvs_${fbUser.uid}`;
+            const oldJobsKey = `firststep_applied_jobs_${existingUser.id}`;
+            const newJobsKey = `firststep_applied_jobs_${fbUser.uid}`;
+
+            try {
+              const oldCvs = localStorage.getItem(oldCvKey);
+              if (oldCvs) {
+                localStorage.setItem(newCvKey, oldCvs);
+              }
+            } catch (migErr) {
+              console.warn("STAuth: Local storage CV migration failed:", migErr);
+            }
+
+            try {
+              const oldJobs = localStorage.getItem(oldJobsKey);
+              if (oldJobs) {
+                localStorage.setItem(newJobsKey, oldJobs);
+              }
+            } catch (migErr) {
+              console.warn("STAuth: Local storage Jobs migration failed:", migErr);
+            }
+
+            existingUser.id = fbUser.uid;
+            localStorage.setItem("firststep_users", JSON.stringify(usersList));
+          }
+
+          const activeUser: User = {
+            id: existingUser.id,
+            email: existingUser.email,
+            fullName: existingUser.fullName,
+            createdAt: existingUser.createdAt,
+            picture: fbUser.photoURL || existingUser.picture || "",
+            preferences: existingUser.preferences || { interestedSectors: [], preferredType: "ყველა" }
+          };
+
+          localStorage.setItem("firststep_active_user", JSON.stringify(activeUser));
+          setCurrentUser(activeUser);
+        } else {
+          // Create user profile local stub
+          const newUser: User = {
+            id: fbUser.uid,
+            email: fbEmail || "",
+            fullName: fbUser.displayName || "სტუდენტი",
+            createdAt: new Date().toISOString(),
+            picture: fbUser.photoURL || "",
+            preferences: {
+              interestedSectors: [],
+              preferredType: "ყველა"
+            }
+          };
+          usersList.push(newUser);
+          localStorage.setItem("firststep_users", JSON.stringify(usersList));
+          localStorage.setItem("firststep_active_user", JSON.stringify(newUser));
+          setCurrentUser(newUser);
+        }
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Synchronize dynamic user lists with Firebase Firestore on authenticated session
